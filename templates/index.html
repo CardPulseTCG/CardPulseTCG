@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CardPulse — Trading Card Price Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:       #080c12;
+      --surface:  #0e1420;
+      --surface2: #151d2e;
+      --border:   #1e2d45;
+      --accent:   #00d4ff;
+      --accent2:  #ff6b35;
+      --gold:     #ffd166;
+      --text:     #e8f0fe;
+      --muted:    #6b7fa3;
+      --success:  #00e5a0;
+      --danger:   #ff4d6d;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh; overflow-x: hidden;
+    }
+
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    header {
+      position: relative; z-index: 10;
+      padding: 2rem 2.5rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(180deg, rgba(0,212,255,0.05) 0%, transparent 100%);
+    }
+
+    .header-left { display: flex; align-items: center; gap: 1.2rem; }
+
+    .logo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; box-shadow: 0 0 20px rgba(0,212,255,0.3);
+    }
+
+    .logo-text {
+      font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--text));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .logo-sub {
+      font-size: 0.7rem; color: var(--muted);
+      letter-spacing: 3px; text-transform: uppercase; margin-top: -4px;
+    }
+
+    /* ── Card Ladder status badge in header ── */
+    .cl-status {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.4rem 0.9rem; border-radius: 100px;
+      font-family: 'DM Mono', monospace; font-size: 0.7rem;
+      letter-spacing: 1px; border: 1px solid;
+    }
+
+    .cl-status.connected {
+      background: rgba(0,229,160,0.08);
+      border-color: rgba(0,229,160,0.25);
+      color: var(--success);
+    }
+
+    .cl-status.disconnected {
+      background: rgba(255,209,102,0.08);
+      border-color: rgba(255,209,102,0.25);
+      color: var(--gold);
+    }
+
+    .cl-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+    }
+
+    .cl-status.connected .cl-dot   { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .cl-status.disconnected .cl-dot { background: var(--gold); }
+
+    main {
+      position: relative; z-index: 5;
+      max-width: 1200px; margin: 0 auto; padding: 2.5rem 2rem;
+    }
+
+    /* ── Search Panel ── */
+    .search-panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 2rem; margin-bottom: 2.5rem;
+      display: grid; grid-template-columns: 1fr auto auto;
+      gap: 1rem; align-items: end;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+    }
+
+    .field-group { display: flex; flex-direction: column; gap: 0.4rem; }
+
+    label {
+      font-size: 0.7rem; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--muted);
+      font-family: 'DM Mono', monospace;
+    }
+
+    input[type="text"], select {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem; padding: 0.75rem 1rem;
+      border-radius: 8px; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s; width: 100%;
+    }
+
+    input[type="text"]:focus, select:focus {
+      border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,212,255,0.1);
+    }
+
+    select option { background: var(--surface2); }
+
+    .search-btn {
+      background: linear-gradient(135deg, var(--accent), #0099cc);
+      color: #000; font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.1rem; letter-spacing: 2px;
+      border: none; padding: 0.75rem 2rem;
+      border-radius: 8px; cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+      white-space: nowrap; box-shadow: 0 4px 15px rgba(0,212,255,0.3);
+    }
+
+    .search-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,212,255,0.4); }
+    .search-btn:active { transform: translateY(0); }
+    .search-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── Loading ── */
+    .loading { display: none; text-align: center; padding: 4rem; color: var(--muted); }
+    .loading.active { display: block; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    .loading-platforms {
+      display: flex; justify-content: center; gap: 1.5rem;
+      margin-top: 1rem; flex-wrap: wrap;
+    }
+    .loading-platform {
+      font-family: 'DM Mono', monospace; font-size: 0.75rem;
+      color: var(--muted); display: flex; align-items: center; gap: 0.4rem;
+    }
+    .loading-platform .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--border); animation: blink 1.2s ease infinite;
+    }
+    .loading-platform:nth-child(2) .dot { animation-delay: 0.4s; }
+    .loading-platform:nth-child(3) .dot { animation-delay: 0.8s; }
+    @keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; background: var(--accent); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error ── */
+    .error-box {
+      display: none; background: rgba(255,77,109,0.1);
+      border: 1px solid var(--danger); border-radius: 10px;
+      padding: 1rem 1.5rem; color: var(--danger);
+      margin-bottom: 2rem; font-size: 0.9rem;
+    }
+    .error-box.active { display: block; }
+
+    /* ── Results ── */
+    #results { display: none; }
+    #results.active { display: block; animation: fadeUp 0.5s ease; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Card reveal ── */
+    .card-reveal {
+      display: flex; align-items: center;
+      gap: 2.5rem; margin-bottom: 2rem; flex-wrap: wrap;
+    }
+
+    .card-image-wrap {
+      flex-shrink: 0; position: relative; width: 220px;
+    }
+
+    .card-image-wrap::before {
+      content: ''; position: absolute; inset: -12px; border-radius: 20px;
+      background: radial-gradient(ellipse at center,
+        rgba(0,212,255,0.25) 0%, rgba(255,209,102,0.1) 50%, transparent 70%);
+      filter: blur(12px); z-index: 0;
+      animation: pulse-glow 3s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse-glow {
+      from { opacity: 0.6; transform: scale(0.97); }
+      to   { opacity: 1;   transform: scale(1.03); }
+    }
+
+    .card-image {
+      position: relative; z-index: 1; width: 100%; border-radius: 12px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+      animation: card-drop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); display: block;
+    }
+
+    @keyframes card-drop {
+      from { opacity: 0; transform: translateY(-30px) rotate(-3deg) scale(0.9); }
+      to   { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+    }
+
+    .card-image-placeholder {
+      position: relative; z-index: 1; width: 100%; aspect-ratio: 2.5/3.5;
+      border-radius: 12px; background: var(--surface2);
+      border: 1px dashed var(--border);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: var(--muted); font-size: 0.75rem;
+      text-align: center; gap: 0.5rem; font-family: 'DM Mono', monospace;
+    }
+
+    .card-image-source {
+      position: absolute; bottom: -1.4rem; left: 0; right: 0;
+      text-align: center; font-size: 0.6rem; color: var(--muted);
+      font-family: 'DM Mono', monospace; letter-spacing: 1px;
+    }
+
+    .card-info { flex: 1; min-width: 220px; }
+
+    .result-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.8rem; letter-spacing: 1px;
+      line-height: 1; margin-bottom: 0.5rem;
+    }
+
+    .result-condition {
+      display: inline-block; font-family: 'DM Mono', monospace; font-size: 0.8rem;
+      background: rgba(0,212,255,0.1); color: var(--accent);
+      border: 1px solid rgba(0,212,255,0.2);
+      padding: 0.25rem 0.75rem; border-radius: 100px;
+      letter-spacing: 1px; margin-bottom: 1.5rem;
+    }
+
+    .combined-hero {
+      background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(255,107,53,0.05));
+      border: 1px solid rgba(0,212,255,0.2);
+      border-radius: 14px; padding: 1.5rem 2rem;
+    }
+
+    .combined-label {
+      font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 0.3rem;
+    }
+
+    .combined-price {
+      font-family: 'Bebas Neue', sans-serif; font-size: 3rem;
+      letter-spacing: 2px; line-height: 1;
+      background: linear-gradient(90deg, var(--accent), var(--gold));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .combined-meta { font-size: 0.8rem; color: var(--muted); margin-top: 0.3rem; }
+
+    /* ── Charts ── */
+    .charts-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1.5rem; margin-bottom: 1.5rem;
+    }
+
+    .chart-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.5rem;
+    }
+
+    .chart-title {
+      font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 1.2rem;
+    }
+
+    .chart-container { position: relative; height: 220px; }
+
+    /* ── Platform cards — 3 columns ── */
+    .platforms-row {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 1.5rem; margin-bottom: 1.5rem;
+    }
+
+    .platform-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.5rem;
+    }
+
+    .platform-header {
+      display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.2rem;
+    }
+
+    .platform-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .platform-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; letter-spacing: 1px; }
+    .platform-avg { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 1.1rem; color: var(--gold); }
+
+    /* ── Table ── */
+    .table-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.5rem; margin-bottom: 1.5rem;
+    }
+
+    .table-title {
+      font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 1.2rem;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+
+    thead th {
+      text-align: left; padding: 0.6rem 1rem;
+      font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--muted); font-family: 'DM Mono', monospace;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr { border-bottom: 1px solid rgba(30,45,69,0.5); transition: background 0.15s; }
+    tbody tr:hover { background: rgba(0,212,255,0.03); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td { padding: 0.75rem 1rem; font-family: 'DM Mono', monospace; }
+    .sale-num { color: var(--muted); font-size: 0.8rem; }
+
+    .platform-badge {
+      display: inline-block; font-size: 0.7rem;
+      padding: 0.2rem 0.6rem; border-radius: 4px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .badge-ebay { background: rgba(0,100,210,0.15); color: #4da6ff; border: 1px solid rgba(0,100,210,0.3); }
+    .badge-tcg  { background: rgba(0,168,107,0.15); color: #00e5a0; border: 1px solid rgba(0,168,107,0.3); }
+    .badge-cl   { background: rgba(255,107,53,0.15); color: #ff9966; border: 1px solid rgba(255,107,53,0.3); }
+
+    .price-high { color: var(--danger); }
+    .price-low  { color: var(--success); }
+    .price-mid  { color: var(--text); }
+
+    .stat-row { display: flex; gap: 0.75rem; margin-top: 0.75rem; flex-wrap: wrap; }
+
+    .stat-pill {
+      flex: 1; min-width: 70px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.6rem 0.8rem; text-align: center;
+    }
+
+    .stat-pill-label {
+      font-size: 0.6rem; letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted); font-family: 'DM Mono', monospace;
+    }
+
+    .stat-pill-value { font-family: 'DM Mono', monospace; font-size: 0.95rem; margin-top: 0.15rem; }
+    .no-data { color: var(--muted); font-size: 0.85rem; font-style: italic; padding: 0.5rem 0; }
+
+    @media (max-width: 800px) {
+      .search-panel { grid-template-columns: 1fr; }
+      .charts-row   { grid-template-columns: 1fr; }
+      .platforms-row { grid-template-columns: 1fr; }
+      .card-reveal  { flex-direction: column; align-items: center; text-align: center; }
+      .card-image-wrap { width: 180px; }
+      .result-title { font-size: 2rem; }
+      .combined-price { font-size: 2.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo-icon">🃏</div>
+    <div>
+      <div class="logo-text">CardPulse</div>
+      <div class="logo-sub">Real-Time Price Intelligence</div>
+    </div>
+  </div>
+
+  <!-- Card Ladder connection status badge -->
+  {% if cl_configured %}
+  <div class="cl-status connected">
+    <div class="cl-dot"></div>
+    CARD LADDER PRO CONNECTED
+  </div>
+  {% else %}
+  <div class="cl-status disconnected">
+    <div class="cl-dot"></div>
+    CARD LADDER NOT CONFIGURED
+  </div>
+  {% endif %}
+</header>
+
+<main>
+
+  <!-- Search Panel -->
+  <div class="search-panel">
+    <div class="field-group">
+      <label for="cardName">Card Name</label>
+      <input type="text" id="cardName"
+        placeholder="e.g. Charizard Base Set, Black Lotus, Monkey D. Luffy OP01..."/>
+    </div>
+    <div class="field-group">
+      <label for="condition">Condition / Grade</label>
+      <select id="condition">
+        {% for c in conditions %}
+        <option value="{{ c }}">{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="search-btn" id="searchBtn" onclick="runSearch()">SEARCH</button>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p style="font-family:'DM Mono',monospace;font-size:0.85rem;margin-bottom:0.5rem">
+      Scanning platforms for recent sales...
+    </p>
+    <div class="loading-platforms">
+      <div class="loading-platform"><div class="dot"></div> eBay</div>
+      <div class="loading-platform"><div class="dot"></div> TCGPlayer</div>
+      <div class="loading-platform"><div class="dot"></div> Card Ladder</div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results">
+
+    <!-- Card reveal -->
+    <div class="card-reveal">
+      <div class="card-image-wrap" id="cardImageWrap"></div>
+      <div class="card-info">
+        <div class="result-title"     id="resultTitle"></div>
+        <div class="result-condition" id="resultCondition"></div>
+        <div class="combined-hero">
+          <div class="combined-label">Combined Market Average</div>
+          <div class="combined-price" id="combinedPrice">—</div>
+          <div class="combined-meta"  id="combinedMeta"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">Platform Average Comparison</div>
+        <div class="chart-container"><canvas id="barChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Price Trend — Last 5 Sales</div>
+        <div class="chart-container"><canvas id="lineChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Platform stat cards (3 columns) -->
+    <div class="platforms-row" id="platformCards"></div>
+
+    <!-- Price history table -->
+    <div class="table-card">
+      <div class="table-title">Full Price History</div>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Platform</th><th>Sale Price</th><th>vs Average</th></tr>
+        </thead>
+        <tbody id="priceTableBody"></tbody>
+      </table>
+    </div>
+
+  </div><!-- /results -->
+</main>
+
+<script>
+  let barChartInstance  = null;
+  let lineChartInstance = null;
+
+  // Colors for each platform
+  const PLATFORM_COLORS = {
+    'eBay':        { line: '#4da6ff', fill: 'rgba(77,166,255,0.12)',  badge: 'badge-ebay', dot: '#4da6ff' },
+    'TCGPlayer':   { line: '#00e5a0', fill: 'rgba(0,229,160,0.12)',   badge: 'badge-tcg',  dot: '#00e5a0' },
+    'Card Ladder': { line: '#ff9966', fill: 'rgba(255,153,102,0.12)', badge: 'badge-cl',   dot: '#ff9966' },
+  };
+
+  async function runSearch() {
+    const cardName  = document.getElementById('cardName').value.trim();
+    const condition = document.getElementById('condition').value;
+    const btn       = document.getElementById('searchBtn');
+    const errorBox  = document.getElementById('errorBox');
+    const loading   = document.getElementById('loading');
+    const results   = document.getElementById('results');
+
+    // DECISION: Don't search with an empty card name
+    if (!cardName) { showError('Please enter a card name.'); return; }
+
+    errorBox.classList.remove('active');
+    results.classList.remove('active');
+    loading.classList.add('active');
+    btn.disabled = true;
+    btn.textContent = 'SEARCHING...';
+
+    try {
+      const response = await fetch('/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ card_name: cardName, condition })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showError(data.error || 'Something went wrong. Please try again.');
+        return;
+      }
+
+      renderResults(data);
+
+    } catch (err) {
+      showError('Could not connect to the server. Please try again.');
+    } finally {
+      loading.classList.remove('active');
+      btn.disabled = false;
+      btn.textContent = 'SEARCH';
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById('errorBox').textContent = msg;
+    document.getElementById('errorBox').classList.add('active');
+    document.getElementById('loading').classList.remove('active');
+    document.getElementById('searchBtn').disabled = false;
+    document.getElementById('searchBtn').textContent = 'SEARCH';
+  }
+
+  function renderResults(data) {
+    document.getElementById('resultTitle').textContent     = data.card_name;
+    document.getElementById('resultCondition').textContent = data.condition;
+
+    renderCardImage(data.card_image);
+
+    // Combined average
+    const activePlatforms = data.platforms.filter(p => p.prices.length > 0).length;
+    if (data.combined_average !== null) {
+      document.getElementById('combinedPrice').textContent =
+        '$' + data.combined_average.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+      document.getElementById('combinedMeta').textContent =
+        `Based on ${data.total_sales} sale${data.total_sales !== 1 ? 's' : ''} across ${activePlatforms} platform${activePlatforms !== 1 ? 's' : ''}`;
+    } else {
+      document.getElementById('combinedPrice').textContent = 'No data found';
+      document.getElementById('combinedMeta').textContent  = 'Try a different card name or condition';
+    }
+
+    renderBarChart(data.platforms);
+    renderLineChart(data.platforms);
+    renderPlatformCards(data.platforms);
+    renderTable(data.platforms, data.combined_average);
+
+    document.getElementById('results').classList.add('active');
+  }
+
+  function renderCardImage(cardImage) {
+    const wrap = document.getElementById('cardImageWrap');
+    wrap.innerHTML = '';
+
+    if (cardImage && cardImage.url) {
+      const img = document.createElement('img');
+      img.src = cardImage.url;
+      img.alt = 'Card image';
+      img.className = 'card-image';
+      // DECISION: If image URL fails to load → fall back to placeholder
+      img.onerror = () => { wrap.innerHTML = buildPlaceholder(); };
+      wrap.appendChild(img);
+
+      const src = document.createElement('div');
+      src.className = 'card-image-source';
+      src.textContent = `Image via ${cardImage.source}`;
+      wrap.appendChild(src);
+    } else {
+      wrap.innerHTML = buildPlaceholder();
+    }
+  }
+
+  function buildPlaceholder() {
+    return `<div class="card-image-placeholder">
+      <div style="font-size:2rem">🃏</div>
+      <div>No image found</div>
+      <div style="font-size:0.6rem;margin-top:0.2rem">Try a more specific card name</div>
+    </div>`;
+  }
+
+  function renderBarChart(platforms) {
+    if (barChartInstance) barChartInstance.destroy();
+
+    // DECISION: Only show platforms that have data in the bar chart
+    const active = platforms.filter(p => p.average !== null);
+
+    barChartInstance = new Chart(document.getElementById('barChart'), {
+      type: 'bar',
+      data: {
+        labels: active.map(p => p.platform),
+        datasets: [{
+          data: active.map(p => p.average),
+          backgroundColor: active.map(p => PLATFORM_COLORS[p.platform]?.fill || 'rgba(136,136,136,0.2)'),
+          borderColor:     active.map(p => PLATFORM_COLORS[p.platform]?.line || '#888'),
+          borderWidth: 2, borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#6b7fa3', font: { family: 'DM Mono', size: 11 } }, grid: { color: '#1e2d45' } },
+          y: {
+            ticks: { color: '#6b7fa3', font: { family: 'DM Mono', size: 10 }, callback: v => '$' + v.toLocaleString() },
+            grid: { color: '#1e2d45' }
+          }
+        }
+      }
+    });
+  }
+
+  function renderLineChart(platforms) {
+    if (lineChartInstance) lineChartInstance.destroy();
+
+    const datasets = platforms
+      .filter(p => p.prices.length > 0)
+      .map(p => ({
+        label: p.platform,
+        data: p.prices,
+        borderColor:      PLATFORM_COLORS[p.platform]?.line || '#888',
+        backgroundColor:  PLATFORM_COLORS[p.platform]?.fill || 'transparent',
+        borderWidth: 2,
+        pointBackgroundColor: PLATFORM_COLORS[p.platform]?.line || '#888',
+        pointRadius: 4, tension: 0.3, fill: true,
+      }));
+
+    const maxLen = Math.max(...platforms.map(p => p.prices.length), 1);
+    const labels = Array.from({ length: maxLen }, (_, i) => `Sale ${i + 1}`);
+
+    lineChartInstance = new Chart(document.getElementById('lineChart'), {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#6b7fa3', font: { family: 'DM Mono', size: 10 }, boxWidth: 12 } } },
+        scales: {
+          x: { ticks: { color: '#6b7fa3', font: { family: 'DM Mono', size: 10 } }, grid: { color: '#1e2d45' } },
+          y: {
+            ticks: { color: '#6b7fa3', font: { family: 'DM Mono', size: 10 }, callback: v => '$' + v.toLocaleString() },
+            grid: { color: '#1e2d45' }
+          }
+        }
+      }
+    });
+  }
+
+  function renderPlatformCards(platforms) {
+    const container = document.getElementById('platformCards');
+    container.innerHTML = '';
+
+    platforms.forEach(p => {
+      const color = PLATFORM_COLORS[p.platform]?.dot || '#888';
+      const card  = document.createElement('div');
+      card.className = 'platform-card';
+
+      if (!p.prices.length) {
+        // DECISION: Show "not configured" message for Card Ladder if empty
+        const emptyMsg = p.platform === 'Card Ladder'
+          ? 'Not configured or no matching sales'
+          : 'No matching sales found';
+
+        card.innerHTML = `
+          <div class="platform-header">
+            <div class="platform-dot" style="background:${color};opacity:0.4"></div>
+            <div class="platform-name" style="opacity:0.5">${p.platform}</div>
+          </div>
+          <div class="no-data">${emptyMsg}</div>`;
+      } else {
+        const fmt = v => '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+        card.innerHTML = `
+          <div class="platform-header">
+            <div class="platform-dot" style="background:${color}"></div>
+            <div class="platform-name">${p.platform}</div>
+            <div class="platform-avg">${fmt(p.average)}</div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-pill">
+              <div class="stat-pill-label">High</div>
+              <div class="stat-pill-value price-high">${fmt(p.high)}</div>
+            </div>
+            <div class="stat-pill">
+              <div class="stat-pill-label">Avg</div>
+              <div class="stat-pill-value" style="color:${color}">${fmt(p.average)}</div>
+            </div>
+            <div class="stat-pill">
+              <div class="stat-pill-label">Low</div>
+              <div class="stat-pill-value price-low">${fmt(p.low)}</div>
+            </div>
+            <div class="stat-pill">
+              <div class="stat-pill-label">Sales</div>
+              <div class="stat-pill-value">${p.prices.length}</div>
+            </div>
+          </div>`;
+      }
+      container.appendChild(card);
+    });
+  }
+
+  function renderTable(platforms, combinedAvg) {
+    const tbody = document.getElementById('priceTableBody');
+    tbody.innerHTML = '';
+    let rowNum = 1;
+
+    platforms.forEach(p => {
+      if (!p.prices.length) return;
+      const badgeClass = PLATFORM_COLORS[p.platform]?.badge || 'badge-ebay';
+
+      p.prices.forEach(price => {
+        const fmt  = v => '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+        const diff = combinedAvg ? price - combinedAvg : null;
+        let diffHtml = '<td style="color:var(--muted)">—</td>';
+
+        if (diff !== null) {
+          const sign      = diff >= 0 ? '+' : '-';
+          const diffClass = diff > 0 ? 'price-high' : diff < 0 ? 'price-low' : 'price-mid';
+          diffHtml = `<td class="${diffClass}">${sign}${fmt(Math.abs(diff))}</td>`;
+        }
+
+        const priceClass = combinedAvg
+          ? (price > combinedAvg ? 'price-high' : price < combinedAvg ? 'price-low' : 'price-mid')
+          : 'price-mid';
+
+        tbody.innerHTML += `
+          <tr>
+            <td class="sale-num">#${rowNum++}</td>
+            <td><span class="platform-badge ${badgeClass}">${p.platform}</span></td>
+            <td class="${priceClass}">${fmt(price)}</td>
+            ${diffHtml}
+          </tr>`;
+      });
+    });
+  }
+
+  document.getElementById('cardName').addEventListener('keydown', e => {
+    if (e.key === 'Enter') runSearch();
+  });
+</script>
+
+</body>
+</html>

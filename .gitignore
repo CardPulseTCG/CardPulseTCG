@@ -1,0 +1,11 @@
+# .env — Copy this, rename to .env, and fill in your values.
+# NEVER commit your real .env file to GitHub.
+
+SECRET_KEY=change-this-to-a-long-random-string
+CARDLADDER_EMAIL=your_email@example.com
+CARDLADDER_PASSWORD=your_password
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+ADMIN_EMAIL=admin@cardpulse.com
+ADMIN_PASSWORD=changeme

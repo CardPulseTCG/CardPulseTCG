@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — {{ shop.shop_name }} — CardPulse</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--bg:#080c12;--surface:#0e1420;--surface2:#151d2e;--border:#1e2d45;
+      --accent:#00d4ff;--accent2:#ff6b35;--gold:#ffd166;--text:#e8f0fe;
+      --muted:#6b7fa3;--success:#00e5a0;--danger:#ff4d6d;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
+    nav{padding:1rem 2rem;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;
+      background:rgba(0,212,255,0.03);}
+    .nav-logo{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:2px;
+      background:linear-gradient(90deg,var(--accent),var(--text));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;}
+    .nav-right{display:flex;align-items:center;gap:1rem;}
+    .nav-shop{font-size:0.85rem;color:var(--muted);}
+    .nav-shop strong{color:var(--text);}
+    .nav-btn{padding:0.4rem 1rem;border-radius:6px;font-size:0.8rem;text-decoration:none;
+      font-family:'DM Mono',monospace;letter-spacing:1px;}
+    .btn-outline{border:1px solid var(--border);color:var(--muted);}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent);}
+    main{max-width:1100px;margin:0 auto;padding:2rem 1.5rem;}
+
+    /* Flash messages */
+    .flash{padding:0.75rem 1rem;border-radius:8px;margin-bottom:1.5rem;font-size:0.9rem;}
+    .flash.success{background:rgba(0,229,160,0.1);border:1px solid var(--success);color:var(--success);}
+    .flash.error{background:rgba(255,77,109,0.1);border:1px solid var(--danger);color:var(--danger);}
+    .flash.warning{background:rgba(255,209,102,0.1);border:1px solid var(--gold);color:var(--gold);}
+
+    /* Section headers */
+    .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;}
+    .section-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:1px;}
+    .section-sub{font-size:0.7rem;letter-spacing:2px;text-transform:uppercase;
+      color:var(--muted);font-family:'DM Mono',monospace;}
+
+    /* Cards/panels */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem;margin-bottom:1.5rem;}
+
+    /* Membership banner */
+    .membership-banner{
+      background:linear-gradient(135deg,rgba(0,212,255,0.08),rgba(255,107,53,0.05));
+      border:1px solid rgba(0,212,255,0.2);border-radius:14px;
+      padding:1.5rem 2rem;margin-bottom:1.5rem;
+      display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;}
+    .membership-info .label{font-size:0.65rem;letter-spacing:3px;text-transform:uppercase;
+      color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:0.25rem;}
+    .membership-info .value{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:1px;}
+    .membership-info .value.active{color:var(--success);}
+    .membership-info .value.none{color:var(--muted);}
+    .membership-btns{display:flex;gap:0.75rem;flex-wrap:wrap;}
+    .mem-btn{padding:0.6rem 1.2rem;border-radius:8px;text-decoration:none;
+      font-family:'DM Mono',monospace;font-size:0.75rem;letter-spacing:1px;
+      border:1px solid;transition:opacity 0.2s;}
+    .mem-btn.monthly{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.3);color:var(--accent);}
+    .mem-btn.yearly{background:rgba(255,209,102,0.1);border-color:rgba(255,209,102,0.3);color:var(--gold);}
+    .mem-btn:hover{opacity:0.75;}
+
+    /* Fee notice */
+    .fee-notice{font-size:0.75rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:0.5rem;}
+
+    /* Form fields */
+    .field{display:flex;flex-direction:column;gap:0.35rem;margin-bottom:1rem;}
+    .field label{font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;
+      color:var(--muted);font-family:'DM Mono',monospace;}
+    .field input,.field select,.field textarea{background:var(--surface2);border:1px solid var(--border);
+      color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.9rem;
+      padding:0.65rem 0.9rem;border-radius:8px;outline:none;transition:border-color 0.2s;width:100%;}
+    .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+    .field textarea{resize:vertical;min-height:80px;}
+    select option{background:var(--surface2);}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;}
+
+    .submit-btn{background:linear-gradient(135deg,var(--accent),#0099cc);
+      color:#000;font-family:'Bebas Neue',sans-serif;font-size:1rem;
+      letter-spacing:2px;border:none;padding:0.65rem 1.5rem;border-radius:8px;
+      cursor:pointer;transition:opacity 0.2s;}
+    .submit-btn:hover{opacity:0.85;}
+
+    /* Listings table */
+    table{width:100%;border-collapse:collapse;font-size:0.88rem;}
+    thead th{text-align:left;padding:0.5rem 0.75rem;font-size:0.62rem;
+      letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+      font-family:'DM Mono',monospace;border-bottom:1px solid var(--border);}
+    tbody tr{border-bottom:1px solid rgba(30,45,69,0.4);}
+    tbody tr:last-child{border-bottom:none;}
+    tbody td{padding:0.7rem 0.75rem;font-family:'DM Mono',monospace;}
+    .status-active{color:var(--success);}
+    .status-pending{color:var(--gold);}
+    .status-sold{color:var(--muted);}
+    .del-btn{color:var(--danger);text-decoration:none;font-size:0.75rem;}
+    .del-btn:hover{text-decoration:underline;}
+
+    /* Storefront link */
+    .storefront-link{
+      display:inline-flex;align-items:center;gap:0.5rem;
+      background:rgba(0,229,160,0.08);border:1px solid rgba(0,229,160,0.2);
+      color:var(--success);padding:0.5rem 1rem;border-radius:8px;
+      text-decoration:none;font-family:'DM Mono',monospace;font-size:0.75rem;
+      letter-spacing:1px;margin-bottom:1.5rem;}
+    .storefront-link:hover{background:rgba(0,229,160,0.15);}
+
+    /* Profile upload previews */
+    .upload-hint{font-size:0.7rem;color:var(--muted);margin-top:0.25rem;}
+
+    @media(max-width:700px){.row2,.row3{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/" class="nav-logo">🃏 CardPulse</a>
+  <div class="nav-right">
+    <span class="nav-shop">Logged in as <strong>{{ shop.shop_name }}</strong></span>
+    <a href="/logout" class="nav-btn btn-outline">Log Out</a>
+  </div>
+</nav>
+
+<main>
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+  <div class="flash {{ category }}">{{ message }}</div>
+  {% endfor %}
+
+  <!-- Storefront link -->
+  <a href="/shop/{{ shop.slug }}" class="storefront-link" target="_blank">
+    🔗 View Your Public Storefront →
+  </a>
+
+  <!-- Membership Banner -->
+  <div class="membership-banner">
+    <div class="membership-info">
+      <div class="label">Membership Status</div>
+      <div class="value {% if shop.membership != 'none' %}active{% else %}none{% endif %}">
+        {% if shop.membership == 'monthly' %}Monthly Member ✓
+        {% elif shop.membership == 'yearly' %}Yearly Member ✓
+        {% else %}No Active Membership
+        {% endif %}
+      </div>
+    </div>
+    <div>
+      <div class="membership-btns">
+        <a href="/dashboard/membership/monthly" class="mem-btn monthly">
+          Monthly — ${{ "%.2f"|format(monthly_fee) }}/mo
+        </a>
+        <a href="/dashboard/membership/yearly" class="mem-btn yearly">
+          Yearly — ${{ "%.2f"|format(yearly_fee) }}/yr (save ${{ "%.2f"|format(monthly_fee * 12 - yearly_fee) }})
+        </a>
+      </div>
+      <div class="fee-notice">Listing fee: ${{ "%.2f"|format(listing_fee) }} per card • 3% platform fee on sales</div>
+    </div>
+  </div>
+
+  <!-- ── PROFILE ── -->
+  <div class="card">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Shop Profile</div>
+        <div class="section-sub">Name, logo, banner, and about</div>
+      </div>
+    </div>
+    <form method="POST" action="/dashboard/profile" enctype="multipart/form-data">
+      <div class="field">
+        <label>About Your Shop</label>
+        <textarea name="about" placeholder="Tell buyers about your shop...">{{ shop.about or '' }}</textarea>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Logo Image</label>
+          <input type="file" name="logo" accept="image/*"/>
+          {% if shop.logo %}<div class="upload-hint">Current: <a href="{{ shop.logo }}" target="_blank" style="color:var(--accent)">view</a></div>{% endif %}
+        </div>
+        <div class="field">
+          <label>Banner Image</label>
+          <input type="file" name="banner" accept="image/*"/>
+          {% if shop.banner %}<div class="upload-hint">Current: <a href="{{ shop.banner }}" target="_blank" style="color:var(--accent)">view</a></div>{% endif %}
+        </div>
+      </div>
+      <button class="submit-btn" type="submit">SAVE PROFILE</button>
+    </form>
+  </div>
+
+  <!-- ── ADD LISTING ── -->
+  <div class="card">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Add a Card Listing</div>
+        <div class="section-sub">${{ "%.2f"|format(listing_fee) }} listing fee charged via Stripe</div>
+      </div>
+    </div>
+    <form method="POST" action="/dashboard/listings/add" enctype="multipart/form-data">
+      <div class="row2">
+        <div class="field">
+          <label>Card Name *</label>
+          <input type="text" name="card_name" placeholder="Charizard Base Set Holo" required/>
+        </div>
+        <div class="field">
+          <label>Condition *</label>
+          <select name="condition" required>
+            <option value="">Select condition...</option>
+            <option>PSA 10</option><option>PSA 9</option><option>PSA 8</option>
+            <option>BGS 9.5</option><option>BGS 9</option>
+            <option>Near Mint</option><option>Lightly Played</option>
+            <option>Moderately Played</option><option>Heavily Played</option><option>Damaged</option>
+          </select>
+        </div>
+      </div>
+      <div class="row3">
+        <div class="field">
+          <label>Price (USD) *</label>
+          <input type="number" name="price" step="0.01" min="0.01" placeholder="149.99" required/>
+        </div>
+        <div class="field">
+          <label>Quantity</label>
+          <input type="number" name="quantity" min="1" value="1"/>
+        </div>
+        <div class="field">
+          <label>Card Photo</label>
+          <input type="file" name="image" accept="image/*"/>
+        </div>
+      </div>
+      <div class="field">
+        <label>Notes / Description</label>
+        <input type="text" name="notes" placeholder="Slight edge wear, otherwise excellent..."/>
+      </div>
+      <button class="submit-btn" type="submit">ADD LISTING → PAY ${{ "%.2f"|format(listing_fee) }} FEE</button>
+    </form>
+  </div>
+
+  <!-- ── ACTIVE LISTINGS ── -->
+  <div class="card">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Your Listings</div>
+        <div class="section-sub">{{ listings|length }} total</div>
+      </div>
+    </div>
+    {% if listings %}
+    <table>
+      <thead>
+        <tr><th>Card</th><th>Condition</th><th>Price</th><th>Qty</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for l in listings %}
+        <tr>
+          <td>{{ l.card_name }}</td>
+          <td>{{ l.condition }}</td>
+          <td>${{ "%.2f"|format(l.price_cents / 100) }}</td>
+          <td>{{ l.quantity }}</td>
+          <td class="status-{{ l.status }}">{{ l.status.replace('_',' ').title() }}</td>
+          <td><a href="/dashboard/listings/delete/{{ l.id }}" class="del-btn"
+              onclick="return confirm('Remove this listing?')">Remove</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--muted);font-size:0.85rem;">No listings yet. Add your first card above.</p>
+    {% endif %}
+  </div>
+
+  <!-- ── ADD BUNDLE ── -->
+  <div class="card">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Add a Bundle Deal</div>
+        <div class="section-sub">Sell multiple cards together at a discount</div>
+      </div>
+    </div>
+    <form method="POST" action="/dashboard/bundles/add" enctype="multipart/form-data">
+      <div class="row2">
+        <div class="field">
+          <label>Bundle Title *</label>
+          <input type="text" name="title" placeholder="Fire Type Starter Pack" required/>
+        </div>
+        <div class="field">
+          <label>Bundle Price (USD) *</label>
+          <input type="number" name="price" step="0.01" min="0.01" placeholder="49.99" required/>
+        </div>
+      </div>
+      <div class="field">
+        <label>Cards Included (comma separated) *</label>
+        <input type="text" name="items" placeholder="Charizard Base, Charmander, Charmeleon" required/>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Description</label>
+          <textarea name="description" placeholder="Perfect starter bundle for fire type collectors..."></textarea>
+        </div>
+        <div class="field">
+          <label>Bundle Photo</label>
+          <input type="file" name="image" accept="image/*"/>
+        </div>
+      </div>
+      <button class="submit-btn" type="submit">ADD BUNDLE</button>
+    </form>
+  </div>
+
+  <!-- ── BUNDLES LIST ── -->
+  {% if bundles %}
+  <div class="card">
+    <div class="section-title" style="margin-bottom:1rem">Your Bundles</div>
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Items</th><th>Price</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for b in bundles %}
+        <tr>
+          <td>{{ b.title }}</td>
+          <td style="color:var(--muted)">{{ b.items[:50] }}{% if b.items|length > 50 %}...{% endif %}</td>
+          <td>${{ "%.2f"|format(b.price_cents / 100) }}</td>
+          <td><a href="/dashboard/bundles/delete/{{ b.id }}" class="del-btn"
+              onclick="return confirm('Remove this bundle?')">Remove</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+</main>
+</body>
+</html>

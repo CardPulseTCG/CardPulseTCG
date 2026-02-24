@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Shop Login — CardPulse</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root { --bg:#080c12;--surface:#0e1420;--surface2:#151d2e;--border:#1e2d45;
+      --accent:#00d4ff;--gold:#ffd166;--text:#e8f0fe;--muted:#6b7fa3;
+      --success:#00e5a0;--danger:#ff4d6d; }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;}
+    nav{padding:1.2rem 2.5rem;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;}
+    .nav-logo{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:2px;
+      background:linear-gradient(90deg,var(--accent),var(--text));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;}
+    main{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem;}
+    .login-box{background:var(--surface);border:1px solid var(--border);
+      border-radius:16px;padding:2.5rem;width:100%;max-width:420px;}
+    h1{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:2px;
+      margin-bottom:0.3rem;
+      background:linear-gradient(90deg,var(--accent),var(--gold));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .subtitle{color:var(--muted);font-size:0.85rem;margin-bottom:2rem;}
+    .field{display:flex;flex-direction:column;gap:0.35rem;margin-bottom:1rem;}
+    .field label{font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;
+      color:var(--muted);font-family:'DM Mono',monospace;}
+    .field input{background:var(--surface2);border:1px solid var(--border);
+      color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.95rem;
+      padding:0.7rem 1rem;border-radius:8px;outline:none;transition:border-color 0.2s;}
+    .field input:focus{border-color:var(--accent);}
+    .login-btn{width:100%;background:linear-gradient(135deg,var(--accent),#0099cc);
+      color:#000;font-family:'Bebas Neue',sans-serif;font-size:1.2rem;
+      letter-spacing:2px;border:none;padding:0.9rem;border-radius:10px;
+      cursor:pointer;margin-top:0.5rem;transition:opacity 0.2s;}
+    .login-btn:hover{opacity:0.9;}
+    .flash{padding:0.7rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.85rem;}
+    .flash.error{background:rgba(255,77,109,0.1);border:1px solid var(--danger);color:var(--danger);}
+    .flash.warning{background:rgba(255,209,102,0.1);border:1px solid var(--gold);color:var(--gold);}
+    .apply-link{text-align:center;margin-top:1.5rem;color:var(--muted);font-size:0.85rem;}
+    .apply-link a{color:var(--accent);text-decoration:none;}
+  </style>
+</head>
+<body>
+<nav><a href="/" class="nav-logo">CardPulse</a></nav>
+<main>
+  <div class="login-box">
+    <h1>Shop Login</h1>
+    <p class="subtitle">Access your seller dashboard</p>
+
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+    <div class="flash {{ category }}">{{ message }}</div>
+    {% endfor %}
+
+    <form method="POST" action="/login">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" name="email" placeholder="you@yourshop.com" required/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" name="password" placeholder="••••••••" required/>
+      </div>
+      <button class="login-btn" type="submit">LOG IN</button>
+    </form>
+
+    <div class="apply-link">Don't have an account? <a href="/apply">Apply for a storefront</a></div>
+  </div>
+</main>
+</body>
+</html>

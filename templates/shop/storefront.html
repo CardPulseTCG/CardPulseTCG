@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ shop.shop_name }} — CardPulse</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--bg:#080c12;--surface:#0e1420;--surface2:#151d2e;--border:#1e2d45;
+      --accent:#00d4ff;--gold:#ffd166;--text:#e8f0fe;--muted:#6b7fa3;
+      --success:#00e5a0;--danger:#ff4d6d;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
+    nav{padding:1rem 2rem;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;}
+    .nav-logo{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:2px;
+      background:linear-gradient(90deg,var(--accent),var(--text));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;}
+    .nav-link{color:var(--muted);text-decoration:none;font-size:0.85rem;}
+    .nav-link:hover{color:var(--accent);}
+
+    /* ── Banner + Header ── */
+    .shop-banner{
+      width:100%;height:220px;object-fit:cover;display:block;
+      background:linear-gradient(135deg,#0e1420,#151d2e);
+    }
+    .banner-placeholder{
+      width:100%;height:220px;
+      background:linear-gradient(135deg,rgba(0,212,255,0.05),rgba(255,107,53,0.05));
+      border-bottom:1px solid var(--border);
+    }
+    .shop-header{
+      max-width:1100px;margin:0 auto;padding:0 1.5rem;
+      display:flex;align-items:flex-end;gap:1.5rem;
+      transform:translateY(-40px);margin-bottom:-20px;
+    }
+    .shop-logo{
+      width:80px;height:80px;border-radius:12px;
+      border:3px solid var(--bg);object-fit:cover;
+      background:var(--surface2);flex-shrink:0;
+    }
+    .logo-placeholder{
+      width:80px;height:80px;border-radius:12px;
+      border:3px solid var(--bg);background:var(--surface2);
+      display:flex;align-items:center;justify-content:center;
+      font-size:2rem;flex-shrink:0;
+    }
+    .shop-title-block{padding-bottom:0.5rem;}
+    .shop-name{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:1px;line-height:1;}
+    .shop-location{color:var(--muted);font-size:0.8rem;margin-top:0.2rem;}
+    .shop-rating{display:flex;align-items:center;gap:0.4rem;margin-top:0.3rem;}
+    .stars{color:var(--gold);}
+    .rating-num{font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--muted);}
+
+    main{max-width:1100px;margin:0 auto;padding:0.5rem 1.5rem 3rem;}
+
+    /* About */
+    .about-card{background:var(--surface);border:1px solid var(--border);
+      border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;
+      font-size:0.9rem;color:var(--muted);line-height:1.6;}
+
+    /* Section */
+    .section-label{font-family:'DM Mono',monospace;font-size:0.65rem;
+      letter-spacing:3px;text-transform:uppercase;color:var(--accent);
+      margin-bottom:1rem;}
+
+    /* Listings grid */
+    .listings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:2rem;}
+    .listing-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+      overflow:hidden;transition:border-color 0.2s,transform 0.2s;}
+    .listing-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+    .listing-img{width:100%;height:180px;object-fit:contain;background:var(--surface2);padding:0.5rem;}
+    .listing-img-placeholder{width:100%;height:180px;background:var(--surface2);
+      display:flex;align-items:center;justify-content:center;font-size:2.5rem;}
+    .listing-body{padding:1rem;}
+    .listing-name{font-weight:500;font-size:0.9rem;margin-bottom:0.2rem;}
+    .listing-condition{font-family:'DM Mono',monospace;font-size:0.65rem;
+      color:var(--muted);letter-spacing:1px;margin-bottom:0.6rem;}
+    .listing-price{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;
+      letter-spacing:1px;color:var(--gold);}
+    .buy-btn{display:block;margin-top:0.75rem;text-align:center;
+      background:linear-gradient(135deg,var(--accent),#0099cc);
+      color:#000;font-family:'Bebas Neue',sans-serif;font-size:0.95rem;
+      letter-spacing:2px;padding:0.5rem;border-radius:6px;text-decoration:none;
+      transition:opacity 0.2s;}
+    .buy-btn:hover{opacity:0.85;}
+
+    /* Bundles */
+    .bundles-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin-bottom:2rem;}
+    .bundle-card{background:var(--surface);border:1px solid rgba(255,209,102,0.2);
+      border-radius:12px;overflow:hidden;transition:border-color 0.2s;}
+    .bundle-card:hover{border-color:var(--gold);}
+    .bundle-img{width:100%;height:140px;object-fit:cover;background:var(--surface2);}
+    .bundle-img-placeholder{width:100%;height:140px;background:linear-gradient(135deg,rgba(255,209,102,0.05),rgba(0,212,255,0.05));
+      display:flex;align-items:center;justify-content:center;font-size:2.5rem;}
+    .bundle-body{padding:1rem;}
+    .bundle-title{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:1px;margin-bottom:0.3rem;}
+    .bundle-items{font-size:0.78rem;color:var(--muted);margin-bottom:0.5rem;line-height:1.5;}
+    .bundle-price{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--gold);}
+    .bundle-btn{display:block;margin-top:0.75rem;text-align:center;
+      background:rgba(255,209,102,0.1);border:1px solid rgba(255,209,102,0.3);
+      color:var(--gold);font-family:'Bebas Neue',sans-serif;font-size:0.95rem;
+      letter-spacing:2px;padding:0.5rem;border-radius:6px;text-decoration:none;
+      transition:background 0.2s;}
+    .bundle-btn:hover{background:rgba(255,209,102,0.2);}
+
+    /* Reviews */
+    .review-form{background:var(--surface);border:1px solid var(--border);
+      border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;}
+    .review-form h3{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:1px;margin-bottom:1rem;}
+    .field{display:flex;flex-direction:column;gap:0.3rem;margin-bottom:0.75rem;}
+    .field label{font-size:0.62rem;letter-spacing:2px;text-transform:uppercase;
+      color:var(--muted);font-family:'DM Mono',monospace;}
+    .field input,.field select,.field textarea{background:var(--surface2);border:1px solid var(--border);
+      color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.9rem;
+      padding:0.6rem 0.9rem;border-radius:8px;outline:none;width:100%;}
+    .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+    .field textarea{resize:vertical;min-height:70px;}
+    .review-submit{background:var(--surface2);border:1px solid var(--border);
+      color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:1rem;
+      letter-spacing:2px;padding:0.6rem 1.5rem;border-radius:8px;cursor:pointer;}
+    .review-submit:hover{border-color:var(--accent);color:var(--accent);}
+    .reviews-list{display:flex;flex-direction:column;gap:0.75rem;}
+    .review-item{background:var(--surface);border:1px solid var(--border);
+      border-radius:10px;padding:1rem 1.25rem;}
+    .review-top{display:flex;align-items:center;gap:0.75rem;margin-bottom:0.4rem;}
+    .reviewer{font-weight:500;font-size:0.9rem;}
+    .review-stars{color:var(--gold);font-size:0.85rem;}
+    .review-date{color:var(--muted);font-size:0.75rem;margin-left:auto;font-family:'DM Mono',monospace;}
+    .review-comment{color:var(--muted);font-size:0.85rem;line-height:1.5;}
+    .empty{color:var(--muted);font-size:0.85rem;font-style:italic;padding:0.5rem 0;}
+
+    .flash{padding:0.75rem 1rem;border-radius:8px;margin-bottom:1.5rem;font-size:0.9rem;}
+    .flash.success{background:rgba(0,229,160,0.1);border:1px solid var(--success);color:var(--success);}
+
+    @media(max-width:600px){.listings-grid{grid-template-columns:1fr 1fr;}}
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/" class="nav-logo">🃏 CardPulse</a>
+  <a href="/apply" class="nav-link">Open a Storefront</a>
+</nav>
+
+<!-- Banner -->
+{% if shop.banner %}
+<img src="{{ shop.banner }}" alt="Shop banner" class="shop-banner"/>
+{% else %}
+<div class="banner-placeholder"></div>
+{% endif %}
+
+<!-- Shop header -->
+<div class="shop-header">
+  {% if shop.logo %}
+  <img src="{{ shop.logo }}" alt="Logo" class="shop-logo"/>
+  {% else %}
+  <div class="logo-placeholder">🃏</div>
+  {% endif %}
+  <div class="shop-title-block">
+    <div class="shop-name">{{ shop.shop_name }}</div>
+    {% if shop.city or shop.state %}
+    <div class="shop-location">📍 {{ shop.city }}{% if shop.city and shop.state %}, {% endif %}{{ shop.state }}</div>
+    {% endif %}
+    {% if avg_rating %}
+    <div class="shop-rating">
+      <span class="stars">
+        {% for i in range(5) %}{% if i < avg_rating|int %}★{% else %}☆{% endif %}{% endfor %}
+      </span>
+      <span class="rating-num">{{ avg_rating }} ({{ reviews|length }} review{{ 's' if reviews|length != 1 }})</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<main>
+
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+  <div class="flash {{ category }}">{{ message }}</div>
+  {% endfor %}
+
+  <!-- About -->
+  {% if shop.about %}
+  <div class="about-card">{{ shop.about }}</div>
+  {% endif %}
+
+  <!-- Listings -->
+  {% if listings %}
+  <div class="section-label">Cards for Sale ({{ listings|length }})</div>
+  <div class="listings-grid">
+    {% for l in listings %}
+    <div class="listing-card">
+      {% if l.image %}
+      <img src="{{ l.image }}" alt="{{ l.card_name }}" class="listing-img"/>
+      {% else %}
+      <div class="listing-img-placeholder">🃏</div>
+      {% endif %}
+      <div class="listing-body">
+        <div class="listing-name">{{ l.card_name }}</div>
+        <div class="listing-condition">{{ l.condition }}</div>
+        <div class="listing-price">${{ "%.2f"|format(l.price_cents / 100) }}</div>
+        {% if l.notes %}<div style="font-size:0.75rem;color:var(--muted);margin-top:0.3rem">{{ l.notes }}</div>{% endif %}
+        <a href="/checkout/listing/{{ l.id }}" class="buy-btn">BUY NOW</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="section-label">Cards for Sale</div>
+  <p class="empty">No listings yet.</p>
+  {% endif %}
+
+  <!-- Bundles -->
+  {% if bundles %}
+  <div class="section-label" style="margin-top:1rem">Bundle Deals ({{ bundles|length }})</div>
+  <div class="bundles-grid">
+    {% for b in bundles %}
+    <div class="bundle-card">
+      {% if b.image %}
+      <img src="{{ b.image }}" alt="{{ b.title }}" class="bundle-img"/>
+      {% else %}
+      <div class="bundle-img-placeholder">📦</div>
+      {% endif %}
+      <div class="bundle-body">
+        <div class="bundle-title">{{ b.title }}</div>
+        <div class="bundle-items">{{ b.items }}</div>
+        {% if b.description %}<div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.5rem">{{ b.description }}</div>{% endif %}
+        <div class="bundle-price">${{ "%.2f"|format(b.price_cents / 100) }}</div>
+        <a href="/checkout/bundle/{{ b.id }}" class="bundle-btn">GET BUNDLE</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Reviews -->
+  <div class="section-label" style="margin-top:1.5rem">Reviews</div>
+
+  <div class="review-form">
+    <h3>Leave a Review</h3>
+    <form method="POST" action="/shop/{{ shop.slug }}/review">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="field">
+          <label>Your Name</label>
+          <input type="text" name="reviewer_name" placeholder="Anonymous"/>
+        </div>
+        <div class="field">
+          <label>Rating</label>
+          <select name="rating">
+            <option value="5">★★★★★ — Excellent</option>
+            <option value="4">★★★★☆ — Great</option>
+            <option value="3">★★★☆☆ — Good</option>
+            <option value="2">★★☆☆☆ — Fair</option>
+            <option value="1">★☆☆☆☆ — Poor</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Comment</label>
+        <textarea name="comment" placeholder="Share your experience..."></textarea>
+      </div>
+      <button class="review-submit" type="submit">SUBMIT REVIEW</button>
+    </form>
+  </div>
+
+  {% if reviews %}
+  <div class="reviews-list">
+    {% for r in reviews %}
+    <div class="review-item">
+      <div class="review-top">
+        <span class="reviewer">{{ r.reviewer_name }}</span>
+        <span class="review-stars">{% for i in range(r.rating) %}★{% endfor %}{% for i in range(5 - r.rating) %}☆{% endfor %}</span>
+        <span class="review-date">{{ r.created_at[:10] }}</span>
+      </div>
+      {% if r.comment %}<div class="review-comment">{{ r.comment }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">No reviews yet. Be the first!</p>
+  {% endif %}
+
+</main>
+</body>
+</html>
