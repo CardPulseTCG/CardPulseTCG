@@ -51,6 +51,9 @@ def search_pokemon_tcg_io(card_name, condition):
         headers = {}
         if POKEMON_TCG_API_KEY:
             headers["X-Api-Key"] = POKEMON_TCG_API_KEY
+            print(f"pokemontcg.io: using API key (length {len(POKEMON_TCG_API_KEY)})")
+        else:
+            print("pokemontcg.io: NO API KEY — using rate-limited access")
 
         params = {
             "q":        f'name:"{card_name}"',
@@ -60,7 +63,10 @@ def search_pokemon_tcg_io(card_name, condition):
         r = requests.get(f"{POKEMON_TCG_BASE}/cards",
                          headers=headers, params=params, timeout=8)
 
+        print(f"pokemontcg.io: status {r.status_code}, cards returned: {len(r.json().get('data', []))}")
+
         if r.status_code != 200:
+            print(f"pokemontcg.io error response: {r.text[:200]}")
             return []
 
         data   = r.json().get("data", [])
@@ -77,6 +83,7 @@ def search_pokemon_tcg_io(card_name, condition):
                     prices.append(round(float(market), 2))
                     break
 
+        print(f"pokemontcg.io: found {len(prices)} prices: {prices[:3]}")
         return prices[:5]
 
     except Exception as e:
@@ -120,6 +127,7 @@ def search_tcgapi_dev(card_name, game="pokemon"):
     Works for both Pokémon and One Piece.
     """
     if not TCG_API_KEY:
+        print("tcgapi.dev: NO API KEY — skipping")
         return []
 
     try:
@@ -129,7 +137,10 @@ def search_tcgapi_dev(card_name, game="pokemon"):
         r = requests.get(f"{TCG_API_BASE}/search",
                          headers=headers, params=params, timeout=8)
 
+        print(f"tcgapi.dev: status {r.status_code} for '{card_name}' ({game})")
+
         if r.status_code != 200:
+            print(f"tcgapi.dev error response: {r.text[:200]}")
             return []
 
         data   = r.json().get("data", [])
@@ -140,6 +151,7 @@ def search_tcgapi_dev(card_name, game="pokemon"):
             if price and float(price) > 0:
                 prices.append(round(float(price), 2))
 
+        print(f"tcgapi.dev: found {len(prices)} prices: {prices[:3]}")
         return prices
 
     except Exception as e:
