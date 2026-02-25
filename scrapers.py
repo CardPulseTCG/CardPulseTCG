@@ -60,8 +60,9 @@ def search_pokemon_tcg_io(card_name, condition):
             "pageSize": 10,
         }
 
+        # Increased timeout to 15 seconds for Render's network
         r = requests.get(f"{POKEMON_TCG_BASE}/cards",
-                         headers=headers, params=params, timeout=8)
+                         headers=headers, params=params, timeout=15)
 
         print(f"pokemontcg.io: status {r.status_code}, cards returned: {len(r.json().get('data', []))}")
 
@@ -131,11 +132,12 @@ def search_tcgapi_dev(card_name, game="pokemon"):
         return []
 
     try:
-        headers = {"Authorization": f"Bearer {TCG_API_KEY}"}
+        # tcgapi.dev uses X-Api-Key header not Bearer token
+        headers = {"X-Api-Key": TCG_API_KEY}
         params  = {"q": card_name, "game": game}
 
         r = requests.get(f"{TCG_API_BASE}/search",
-                         headers=headers, params=params, timeout=8)
+                         headers=headers, params=params, timeout=15)
 
         print(f"tcgapi.dev: status {r.status_code} for '{card_name}' ({game})")
 
