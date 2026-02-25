@@ -792,9 +792,11 @@ def add_review(slug):
 
 # ════════════════════════════════════════════════════════════════
 # STARTUP
+# Runs on both local (python app.py) and production (gunicorn)
 # ════════════════════════════════════════════════════════════════
 
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+init_db()
+
 if __name__ == "__main__":
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    init_db()
     app.run(debug=True)
