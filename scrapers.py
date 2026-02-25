@@ -1,199 +1,329 @@
 """
-scrapers.py — All price scraping and image lookup logic
-=========================================================
-Kept separate from app.py so it's easy to update scrapers
-without touching the web routes.
+scrapers.py — CardPulse TCG Price Lookup
+==========================================
+Uses official APIs instead of Selenium/Chrome scraping.
+Works perfectly on Render and any other hosting platform.
+
+APIs used:
+  1. pokemontcg.io     — Pokémon card data, images, and TCGPlayer prices
+  2. tcgapi.dev        — Pokémon + One Piece prices (from TCGPlayer)
+  3. optcgapi.com      — One Piece card data and prices (no key needed)
+
+DECISION-MAKING:
+  - Pokémon searches hit pokemontcg.io first for card data + image
+  - Price data comes from tcgapi.dev (most comprehensive)
+  - One Piece searches hit both tcgapi.dev and optcgapi.com
+  - Results are combined and averaged across sources
+  - IF a source fails or returns nothing → skip it, don't crash
 """
 
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.keys import Keys
-from webdriver_manager.chrome import ChromeDriverManager
-from bs4 import BeautifulSoup
 import requests
 import os
-import time
 
-NUM_SALES = 5
+# ── API Keys (loaded from .env) ──────────────────────────────────────────────
+POKEMON_TCG_API_KEY = os.environ.get("POKEMON_TCG_API_KEY", "")
+TCG_API_KEY         = os.environ.get("TCG_API_KEY", "")
 
-CONDITION_KEYWORDS = {
-    "PSA 10":            ["psa 10", "psa10"],
-    "PSA 9":             ["psa 9", "psa9"],
-    "PSA 8":             ["psa 8", "psa8"],
-    "BGS 9.5":           ["bgs 9.5", "bgs9.5"],
-    "BGS 9":             ["bgs 9", "bgs9"],
-    "Near Mint":         ["near mint", "nm"],
-    "Lightly Played":    ["lightly played", "lp"],
-    "Moderately Played": ["moderately played", "mp"],
-    "Heavily Played":    ["heavily played", "hp"],
-    "Damaged":           ["damaged", "dmg"],
-}
+# ── Base URLs ────────────────────────────────────────────────────────────────
+POKEMON_TCG_BASE = "https://api.pokemontcg.io/v2"
+TCG_API_BASE     = "https://api.tcgapi.dev/v1"
+OPTCG_BASE       = "https://optcgapi.com/api"
 
-
-def make_driver():
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument(
-        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 Chrome/120 Safari/537.36"
-    )
-    return webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
+# ── Condition options ─────────────────────────────────────────────────────────
+CONDITION_OPTIONS = [
+    "PSA 10", "PSA 9", "PSA 8",
+    "BGS 9.5", "BGS 9",
+    "Near Mint", "Lightly Played",
+    "Moderately Played", "Heavily Played", "Damaged",
+]
 
 
-def get_page_source(url, wait_for_class=None):
-    driver = make_driver()
-    driver.get(url)
-    if wait_for_class:
-        try:
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CLASS_NAME, wait_for_class))
-            )
-        except:
-            pass
-    time.sleep(2)
-    source = driver.page_source
-    driver.quit()
-    return source
+# ════════════════════════════════════════════════════════════════════════════
+# POKÉMON — pokemontcg.io
+# ════════════════════════════════════════════════════════════════════════════
 
+def search_pokemon_tcg_io(card_name, condition):
+    """
+    Searches pokemontcg.io for a Pokémon card.
+    Returns a list of prices (floats) in USD.
+    """
+    try:
+        headers = {}
+        if POKEMON_TCG_API_KEY:
+            headers["X-Api-Key"] = POKEMON_TCG_API_KEY
 
-def scrape_ebay(card_name, condition):
-    search_term = card_name.replace(" ", "+")
-    url  = f"https://www.ebay.com/sch/i.html?_nkw={search_term}&LH_Sold=1&LH_Complete=1"
-    html = get_page_source(url, wait_for_class="s-item")
-    soup = BeautifulSoup(html, "html.parser")
-    keywords = CONDITION_KEYWORDS.get(condition, [])
-    prices   = []
+        params = {
+            "q":        f'name:"{card_name}"',
+            "pageSize": 10,
+        }
 
-    for listing in soup.find_all("li", class_="s-item"):
-        if len(prices) >= NUM_SALES:
-            break
-        title_tag = listing.find("div", class_="s-item__title")
-        price_tag = listing.find("span", class_="s-item__price")
-        if not title_tag or not price_tag:
-            continue
-        if any(k in title_tag.get_text(separator=" ").lower() for k in keywords):
-            pt = price_tag.get_text(strip=True)
-            if " to " in pt:
-                pt = pt.split(" to ")[0]
-            try:
-                prices.append(round(float(pt.replace("$","").replace(",","")), 2))
-            except ValueError:
-                continue
-    return prices
+        r = requests.get(f"{POKEMON_TCG_BASE}/cards",
+                         headers=headers, params=params, timeout=8)
 
+        if r.status_code != 200:
+            return []
 
-def scrape_tcgplayer(card_name, condition):
-    search_term = card_name.replace(" ", "+")
-    url  = f"https://www.tcgplayer.com/search/all/product?q={search_term}&view=grid"
-    html = get_page_source(url, wait_for_class="search-result")
-    soup = BeautifulSoup(html, "html.parser")
-    keywords = CONDITION_KEYWORDS.get(condition, [])
-    prices   = []
+        data   = r.json().get("data", [])
+        prices = []
 
-    for listing in soup.find_all("div", class_="search-result"):
-        if len(prices) >= NUM_SALES:
-            break
-        if any(k in listing.get_text(separator=" ").lower() for k in keywords):
-            pt = listing.find("span", class_="product-listing__price")
-            if pt:
-                try:
-                    prices.append(round(float(pt.get_text(strip=True).replace("$","").replace(",","")), 2))
-                except ValueError:
-                    continue
-    return prices
+        for card in data:
+            tcgplayer  = card.get("tcgplayer", {})
+            price_data = tcgplayer.get("prices", {})
 
+            for tier in ["normal", "holofoil", "reverseHolofoil", "1stEditionHolofoil"]:
+                tier_prices = price_data.get(tier, {})
+                market = tier_prices.get("market")
+                if market and float(market) > 0:
+                    prices.append(round(float(market), 2))
+                    break
 
-def scrape_cardladder(card_name, condition):
-    email    = os.environ.get("CARDLADDER_EMAIL", "")
-    password = os.environ.get("CARDLADDER_PASSWORD", "")
+        return prices[:5]
 
-    if not email or not password:
+    except Exception as e:
+        print(f"pokemontcg.io error: {e}")
         return []
 
-    keywords = CONDITION_KEYWORDS.get(condition, [])
-    driver   = make_driver()
-    prices   = []
+
+def fetch_pokemon_image(card_name):
+    """Fetches card image from pokemontcg.io."""
+    try:
+        headers = {}
+        if POKEMON_TCG_API_KEY:
+            headers["X-Api-Key"] = POKEMON_TCG_API_KEY
+
+        r = requests.get(f"{POKEMON_TCG_BASE}/cards",
+                         headers=headers,
+                         params={"q": f'name:"{card_name}"', "pageSize": 1},
+                         timeout=8)
+
+        if r.status_code != 200:
+            return None
+
+        data = r.json().get("data", [])
+        if data:
+            images = data[0].get("images", {})
+            return images.get("large") or images.get("small")
+
+    except Exception as e:
+        print(f"Pokemon image fetch error: {e}")
+
+    return None
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# ALL GAMES — tcgapi.dev
+# ════════════════════════════════════════════════════════════════════════════
+
+def search_tcgapi_dev(card_name, game="pokemon"):
+    """
+    Searches tcgapi.dev for card prices.
+    Works for both Pokémon and One Piece.
+    """
+    if not TCG_API_KEY:
+        return []
 
     try:
-        driver.get("https://www.cardladder.com/users/sign_in")
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "user_email")))
-        driver.find_element(By.ID, "user_email").send_keys(email)
-        driver.find_element(By.ID, "user_password").send_keys(password)
-        driver.find_element(By.ID, "user_password").send_keys(Keys.RETURN)
-        time.sleep(3)
+        headers = {"Authorization": f"Bearer {TCG_API_KEY}"}
+        params  = {"q": card_name, "game": game}
 
-        if "invalid" in driver.page_source.lower():
+        r = requests.get(f"{TCG_API_BASE}/search",
+                         headers=headers, params=params, timeout=8)
+
+        if r.status_code != 200:
             return []
 
-        driver.get(f"https://www.cardladder.com/cards?q={card_name.replace(' ', '+')}")
-        time.sleep(3)
+        data   = r.json().get("data", [])
+        prices = []
 
-        soup      = BeautifulSoup(driver.page_source, "html.parser")
-        card_link = soup.select_one("a.card-result, a[href*='/cards/']")
+        for card in data[:5]:
+            price = card.get("price")
+            if price and float(price) > 0:
+                prices.append(round(float(price), 2))
 
-        if not card_link:
-            return []
+        return prices
 
-        href = card_link.get("href", "")
-        if not href.startswith("http"):
-            href = "https://www.cardladder.com" + href
-
-        driver.get(href)
-        time.sleep(3)
-
-        try:
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "table tbody tr"))
-            )
-        except:
-            return []
-
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        for row in soup.select("table tbody tr"):
-            if len(prices) >= NUM_SALES:
-                break
-            cells = row.find_all("td")
-            if len(cells) < 3:
-                continue
-            if any(k in cells[1].get_text(strip=True).lower() for k in keywords):
-                try:
-                    prices.append(round(float(
-                        cells[2].get_text(strip=True).replace("$","").replace(",","")
-                    ), 2))
-                except ValueError:
-                    continue
     except Exception as e:
-        print(f"Card Ladder error: {e}")
-    finally:
-        driver.quit()
+        print(f"tcgapi.dev error: {e}")
+        return []
 
-    return prices
 
+def fetch_tcgapi_image(card_name, game="pokemon"):
+    """Fetches card image from tcgapi.dev."""
+    if not TCG_API_KEY:
+        return None
+
+    try:
+        headers = {"Authorization": f"Bearer {TCG_API_KEY}"}
+        params  = {"q": card_name, "game": game}
+
+        r = requests.get(f"{TCG_API_BASE}/search",
+                         headers=headers, params=params, timeout=8)
+
+        if r.status_code != 200:
+            return None
+
+        data = r.json().get("data", [])
+        if data:
+            return data[0].get("image") or data[0].get("image_url")
+
+    except Exception as e:
+        print(f"tcgapi.dev image error: {e}")
+
+    return None
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# ONE PIECE — optcgapi.com (no API key needed)
+# ════════════════════════════════════════════════════════════════════════════
+
+def search_optcgapi(card_name):
+    """
+    Searches optcgapi.com for One Piece card prices.
+    No API key required.
+    Returns (prices list, image url or None)
+    """
+    try:
+        r = requests.get(f"{OPTCG_BASE}/sets/cards/",
+                         params={"name": card_name},
+                         timeout=8)
+
+        if r.status_code != 200:
+            return [], None
+
+        data  = r.json()
+        cards = data if isinstance(data, list) else data.get("results", [])
+        prices = []
+        image  = None
+
+        for card in cards[:5]:
+            for price_field in ["market_price", "price", "low_price", "tcgplayer_price"]:
+                p = card.get(price_field)
+                if p and float(p) > 0:
+                    prices.append(round(float(p), 2))
+                    break
+
+            if not image:
+                image = card.get("card_image") or card.get("image_url") or card.get("image")
+
+        return prices, image
+
+    except Exception as e:
+        print(f"optcgapi.com error: {e}")
+        return [], None
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# MAIN SEARCH FUNCTION
+# ════════════════════════════════════════════════════════════════════════════
+
+def search_card_prices(card_name, condition, game="pokemon"):
+    """
+    Main entry point for price searching.
+    Combines results from all available APIs.
+
+    DECISION-MAKING:
+    - IF game is 'pokemon' → use pokemontcg.io + tcgapi.dev
+    - IF game is 'one_piece' → use tcgapi.dev + optcgapi.com
+    - Combines all prices for overall average
+    - IF no prices found anywhere → returns empty result
+    """
+    platforms  = []
+    all_prices = []
+    card_image = None
+
+    if game == "pokemon":
+        # Source 1: pokemontcg.io
+        p1 = search_pokemon_tcg_io(card_name, condition)
+        platforms.append(summarize(p1, "pokemontcg.io"))
+        all_prices.extend(p1)
+
+        if not card_image:
+            img = fetch_pokemon_image(card_name)
+            if img:
+                card_image = {"url": img, "source": "pokemontcg.io"}
+
+        # Source 2: tcgapi.dev
+        p2 = search_tcgapi_dev(card_name, game="pokemon")
+        platforms.append(summarize(p2, "tcgapi.dev"))
+        all_prices.extend(p2)
+
+        if not card_image:
+            img = fetch_tcgapi_image(card_name, game="pokemon")
+            if img:
+                card_image = {"url": img, "source": "tcgapi.dev"}
+
+    elif game == "one_piece":
+        # Source 1: tcgapi.dev
+        p1 = search_tcgapi_dev(card_name, game="one_piece")
+        platforms.append(summarize(p1, "tcgapi.dev"))
+        all_prices.extend(p1)
+
+        if not card_image:
+            img = fetch_tcgapi_image(card_name, game="one_piece")
+            if img:
+                card_image = {"url": img, "source": "tcgapi.dev"}
+
+        # Source 2: optcgapi.com
+        p2, op_image = search_optcgapi(card_name)
+        platforms.append(summarize(p2, "optcgapi.com"))
+        all_prices.extend(p2)
+
+        if not card_image and op_image:
+            card_image = {"url": op_image, "source": "optcgapi.com"}
+
+    combined_average = None
+    if all_prices:
+        combined_average = round(sum(all_prices) / len(all_prices), 2)
+
+    return {
+        "platforms":        platforms,
+        "combined_average": combined_average,
+        "total_sales":      len(all_prices),
+        "card_image":       card_image,
+    }
+
+
+def summarize(prices, platform):
+    """Turns a list of prices into a summary dict."""
+    if not prices:
+        return {"platform": platform, "prices": [], "average": None, "high": None, "low": None}
+    return {
+        "platform": platform,
+        "prices":   prices,
+        "average":  round(sum(prices) / len(prices), 2),
+        "high":     max(prices),
+        "low":      min(prices),
+    }
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# CARD IMAGE LOOKUP
+# Used by storefronts to show card images for listings
+# ════════════════════════════════════════════════════════════════════════════
 
 def fetch_card_image(card_name):
-    # Source 1: Pokémon TCG API
-    try:
-        r = requests.get("https://api.pokemontcg.io/v2/cards",
-            params={"q": f'name:"{card_name}"', "pageSize": 1}, timeout=5)
-        data = r.json()
-        if data.get("data"):
-            img = data["data"][0].get("images", {}).get("large")
-            if img:
-                return {"url": img, "source": "Pokémon TCG API"}
-    except:
-        pass
+    """
+    Fetches a card image for any card name.
+    Tries Pokémon first, then One Piece, then Scryfall for MTG.
+    """
+    # Try Pokémon
+    img = fetch_pokemon_image(card_name)
+    if img:
+        return {"url": img, "source": "pokemontcg.io"}
 
-    # Source 2: Scryfall (MTG)
+    # Try tcgapi.dev
+    img = fetch_tcgapi_image(card_name, game="pokemon")
+    if img:
+        return {"url": img, "source": "tcgapi.dev"}
+
+    img = fetch_tcgapi_image(card_name, game="one_piece")
+    if img:
+        return {"url": img, "source": "tcgapi.dev (One Piece)"}
+
+    # Fallback: Scryfall for MTG cards
     try:
         r = requests.get("https://api.scryfall.com/cards/named",
-            params={"fuzzy": card_name}, timeout=5)
+                         params={"fuzzy": card_name}, timeout=5)
         data = r.json()
         if data.get("object") != "error":
             img = (data.get("image_uris", {}).get("large") or
@@ -201,36 +331,7 @@ def fetch_card_image(card_name):
                    (data.get("card_faces", [{}])[0].get("image_uris", {}).get("large")))
             if img:
                 return {"url": img, "source": "Scryfall (MTG)"}
-    except:
-        pass
-
-    # Source 3: TCGPlayer scrape
-    try:
-        html = get_page_source(
-            f"https://www.tcgplayer.com/search/all/product?q={card_name.replace(' ','+')}&view=grid",
-            wait_for_class="search-result")
-        soup = BeautifulSoup(html, "html.parser")
-        tag  = soup.select_one(".search-result img, .product-card__image img")
-        if tag:
-            src = tag.get("src") or tag.get("data-src")
-            if src and len(src) > 100 and "placeholder" not in src.lower():
-                return {"url": src, "source": "TCGPlayer"}
-    except:
-        pass
-
-    # Source 4: eBay fallback
-    try:
-        html = get_page_source(
-            f"https://www.ebay.com/sch/i.html?_nkw={card_name.replace(' ','+')}&LH_Sold=1",
-            wait_for_class="s-item")
-        soup = BeautifulSoup(html, "html.parser")
-        for listing in soup.find_all("li", class_="s-item"):
-            tag = listing.find("img", class_="s-item__image-img")
-            if tag:
-                src = tag.get("src") or tag.get("data-src")
-                if src and "s-l" in src and "gif" not in src:
-                    return {"url": src, "source": "eBay"}
-    except:
+    except Exception:
         pass
 
     return None

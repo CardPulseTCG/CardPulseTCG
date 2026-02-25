@@ -25,7 +25,7 @@ import os
 import uuid
 from datetime import datetime
 from db import init_db, get_db
-from scrapers import scrape_ebay, scrape_tcgplayer, scrape_cardladder, fetch_card_image
+from scrapers import search_card_prices, fetch_card_image, CONDITION_OPTIONS
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
@@ -116,8 +116,7 @@ def slugify(text):
 
 @app.route("/")
 def index():
-    conditions    = list(CONDITION_KEYWORDS.keys())
-    cl_configured = bool(os.environ.get("CARDLADDER_EMAIL") and os.environ.get("CARDLADDER_PASSWORD"))
+    conditions = CONDITION_OPTIONS
     db = get_db()
     # Show a few featured shops on the homepage
     featured_shops = db.execute(
@@ -125,44 +124,39 @@ def index():
     ).fetchall()
     return render_template("index.html",
         conditions=conditions,
-        cl_configured=cl_configured,
         featured_shops=featured_shops,
         stripe_key=STRIPE_PUBLISHABLE_KEY)
 
 
 @app.route("/search", methods=["POST"])
 def search():
-    """Price tracker search — unchanged from v4."""
+    """
+    Price tracker search using official APIs.
+    Supports Pokémon and One Piece card games.
+    """
     data      = request.get_json()
     card_name = data.get("card_name", "").strip()
     condition = data.get("condition", "").strip()
+    game      = data.get("game", "pokemon").strip()
 
     if not card_name:
         return jsonify({"error": "Please enter a card name."}), 400
-    if condition not in CONDITION_KEYWORDS:
+    if condition not in CONDITION_OPTIONS:
         return jsonify({"error": f"'{condition}' is not a valid condition."}), 400
+    if game not in ("pokemon", "one_piece"):
+        game = "pokemon"
 
-    ebay_prices = scrape_ebay(card_name, condition)
-    tcg_prices  = scrape_tcgplayer(card_name, condition)
-    cl_prices   = scrape_cardladder(card_name, condition)
-    card_image  = fetch_card_image(card_name)
+    results = search_card_prices(card_name, condition, game)
 
-    def summarize(prices, platform):
-        if not prices:
-            return {"platform": platform, "prices": [], "average": None, "high": None, "low": None}
-        avg = round(sum(prices) / len(prices), 2)
-        return {"platform": platform, "prices": prices, "average": avg,
-                "high": max(prices), "low": min(prices)}
-
-    platforms  = [summarize(ebay_prices, "eBay"),
-                  summarize(tcg_prices,  "TCGPlayer"),
-                  summarize(cl_prices,   "Card Ladder")]
-    all_prices = ebay_prices + tcg_prices + cl_prices
-    combined   = round(sum(all_prices) / len(all_prices), 2) if all_prices else None
-
-    return jsonify({"card_name": card_name, "condition": condition,
-                    "platforms": platforms, "combined_average": combined,
-                    "total_sales": len(all_prices), "card_image": card_image})
+    return jsonify({
+        "card_name":        card_name,
+        "condition":        condition,
+        "game":             game,
+        "platforms":        results["platforms"],
+        "combined_average": results["combined_average"],
+        "total_sales":      results["total_sales"],
+        "card_image":       results["card_image"],
+    })
 
 
 # ════════════════════════════════════════════════════════════════

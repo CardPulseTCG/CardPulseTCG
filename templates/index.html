@@ -68,32 +68,47 @@
       letter-spacing: 3px; text-transform: uppercase; margin-top: -4px;
     }
 
-    /* ── Card Ladder status badge in header ── */
-    .cl-status {
+    /* ── API status badge in header ── */
+    .api-status {
       display: flex; align-items: center; gap: 0.5rem;
       padding: 0.4rem 0.9rem; border-radius: 100px;
       font-family: 'DM Mono', monospace; font-size: 0.7rem;
       letter-spacing: 1px; border: 1px solid;
-    }
-
-    .cl-status.connected {
       background: rgba(0,229,160,0.08);
       border-color: rgba(0,229,160,0.25);
       color: var(--success);
     }
 
-    .cl-status.disconnected {
-      background: rgba(255,209,102,0.08);
-      border-color: rgba(255,209,102,0.25);
-      color: var(--gold);
-    }
-
-    .cl-dot {
+    .api-dot {
       width: 7px; height: 7px; border-radius: 50%;
+      background: var(--success); box-shadow: 0 0 6px var(--success);
+      animation: pulse-dot 2s ease infinite;
     }
 
-    .cl-status.connected .cl-dot   { background: var(--success); box-shadow: 0 0 6px var(--success); }
-    .cl-status.disconnected .cl-dot { background: var(--gold); }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── Game selector tabs ── */
+    .game-tabs {
+      display: flex; gap: 0.5rem;
+    }
+
+    .game-tab {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); font-family: 'DM Mono', monospace;
+      font-size: 0.75rem; letter-spacing: 1px; padding: 0.5rem 1rem;
+      border-radius: 8px; cursor: pointer; transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .game-tab:hover { border-color: var(--accent); color: var(--text); }
+
+    .game-tab.active {
+      background: rgba(0,212,255,0.1);
+      border-color: var(--accent); color: var(--accent);
+    }
 
     main {
       position: relative; z-index: 5;
@@ -343,9 +358,9 @@
       font-family: 'DM Mono', monospace;
     }
 
-    .badge-ebay { background: rgba(0,100,210,0.15); color: #4da6ff; border: 1px solid rgba(0,100,210,0.3); }
-    .badge-tcg  { background: rgba(0,168,107,0.15); color: #00e5a0; border: 1px solid rgba(0,168,107,0.3); }
-    .badge-cl   { background: rgba(255,107,53,0.15); color: #ff9966; border: 1px solid rgba(255,107,53,0.3); }
+    .badge-pokemon { background: rgba(0,100,210,0.15); color: #4da6ff; border: 1px solid rgba(0,100,210,0.3); }
+    .badge-tcg     { background: rgba(0,168,107,0.15); color: #00e5a0; border: 1px solid rgba(0,168,107,0.3); }
+    .badge-optcg   { background: rgba(255,107,53,0.15); color: #ff9966; border: 1px solid rgba(255,107,53,0.3); }
 
     .price-high { color: var(--danger); }
     .price-low  { color: var(--success); }
@@ -389,28 +404,27 @@
     </div>
   </div>
 
-  <!-- Card Ladder connection status badge -->
-  {% if cl_configured %}
-  <div class="cl-status connected">
-    <div class="cl-dot"></div>
-    CARD LADDER PRO CONNECTED
+  <div class="api-status">
+    <div class="api-dot"></div>
+    3 APIS LIVE
   </div>
-  {% else %}
-  <div class="cl-status disconnected">
-    <div class="cl-dot"></div>
-    CARD LADDER NOT CONFIGURED
-  </div>
-  {% endif %}
 </header>
 
 <main>
 
   <!-- Search Panel -->
   <div class="search-panel">
+    <div class="field-group" style="grid-column: 1 / -1;">
+      <label>Game</label>
+      <div class="game-tabs">
+        <button class="game-tab active" id="tab-pokemon" onclick="setGame('pokemon')">🎴 Pokémon</button>
+        <button class="game-tab" id="tab-one_piece" onclick="setGame('one_piece')">⚔️ One Piece</button>
+      </div>
+    </div>
     <div class="field-group">
       <label for="cardName">Card Name</label>
       <input type="text" id="cardName"
-        placeholder="e.g. Charizard Base Set, Black Lotus, Monkey D. Luffy OP01..."/>
+        placeholder="e.g. Charizard, Monkey D. Luffy, Pikachu ex..."/>
     </div>
     <div class="field-group">
       <label for="condition">Condition / Grade</label>
@@ -430,12 +444,12 @@
   <div class="loading" id="loading">
     <div class="spinner"></div>
     <p style="font-family:'DM Mono',monospace;font-size:0.85rem;margin-bottom:0.5rem">
-      Scanning platforms for recent sales...
+      Fetching live prices from APIs...
     </p>
     <div class="loading-platforms">
-      <div class="loading-platform"><div class="dot"></div> eBay</div>
-      <div class="loading-platform"><div class="dot"></div> TCGPlayer</div>
-      <div class="loading-platform"><div class="dot"></div> Card Ladder</div>
+      <div class="loading-platform"><div class="dot"></div> pokemontcg.io</div>
+      <div class="loading-platform"><div class="dot"></div> tcgapi.dev</div>
+      <div class="loading-platform"><div class="dot"></div> optcgapi.com</div>
     </div>
   </div>
 
@@ -488,12 +502,25 @@
 <script>
   let barChartInstance  = null;
   let lineChartInstance = null;
+  let selectedGame      = 'pokemon';
+
+  function setGame(game) {
+    selectedGame = game;
+    document.querySelectorAll('.game-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + game).classList.add('active');
+    // Update placeholder text based on game
+    const placeholders = {
+      pokemon:   'e.g. Charizard, Pikachu ex, Umbreon VMAX...',
+      one_piece: 'e.g. Monkey D. Luffy, Roronoa Zoro, Nami...',
+    };
+    document.getElementById('cardName').placeholder = placeholders[game] || '';
+  }
 
   // Colors for each platform
   const PLATFORM_COLORS = {
-    'eBay':        { line: '#4da6ff', fill: 'rgba(77,166,255,0.12)',  badge: 'badge-ebay', dot: '#4da6ff' },
-    'TCGPlayer':   { line: '#00e5a0', fill: 'rgba(0,229,160,0.12)',   badge: 'badge-tcg',  dot: '#00e5a0' },
-    'Card Ladder': { line: '#ff9966', fill: 'rgba(255,153,102,0.12)', badge: 'badge-cl',   dot: '#ff9966' },
+    'pokemontcg.io':  { line: '#4da6ff', fill: 'rgba(77,166,255,0.12)',  badge: 'badge-pokemon', dot: '#4da6ff' },
+    'tcgapi.dev':     { line: '#00e5a0', fill: 'rgba(0,229,160,0.12)',   badge: 'badge-tcg',     dot: '#00e5a0' },
+    'optcgapi.com':   { line: '#ff9966', fill: 'rgba(255,153,102,0.12)', badge: 'badge-optcg',   dot: '#ff9966' },
   };
 
   async function runSearch() {
@@ -517,7 +544,7 @@
       const response = await fetch('/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ card_name: cardName, condition })
+        body: JSON.stringify({ card_name: cardName, condition, game: selectedGame })
       });
 
       const data = await response.json();
@@ -678,10 +705,7 @@
       card.className = 'platform-card';
 
       if (!p.prices.length) {
-        // DECISION: Show "not configured" message for Card Ladder if empty
-        const emptyMsg = p.platform === 'Card Ladder'
-          ? 'Not configured or no matching sales'
-          : 'No matching sales found';
+        const emptyMsg = 'No matching sales found';
 
         card.innerHTML = `
           <div class="platform-header">
